@@ -1,9 +1,12 @@
 import numpy as np
 import random
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from load_data import DataGenerator
 from tensorflow.python.platform import flags
 from tensorflow.keras import layers
+from tensorflow.keras import backend as K
 
 FLAGS = flags.FLAGS
 
@@ -28,7 +31,11 @@ def loss_function(preds, labels):
     """
     #############################
     #### YOUR CODE GOES HERE ####
-    pass
+    preds_target = preds[:, -1:, :, :]
+    labels_target = labels[:, -1:, :, :]
+    loss = K.mean(K.categorical_crossentropy(labels_target, preds_target, from_logits=True))
+
+    return loss
     #############################
 
 
@@ -52,14 +59,22 @@ class MANN(tf.keras.Model):
         """
         #############################
         #### YOUR CODE GOES HERE ####
-        pass
+        K = input_images.shape[1] - 1
+        N = input_images.shape[2]
+        seen = tf.concat([input_images[:,0:-1,:,:],
+                          input_labels[:,0:-1,:,:]], axis=-1)
+        unseen = tf.concat([input_images[:,-1:,:,:],
+                           tf.zeros_like(input_labels)[:,-1:,:,:]], axis=-1)
+        input_concatenated = tf.concat([seen, unseen], axis=1)
+        input_concatenated = tf.reshape(input_concatenated, [-1, (K+1)*N, 784+N])
+        out = self.layer1(input_concatenated)
+        out = self.layer2(out)
+        out = tf.reshape(tensor=out, shape=(-1, K + 1, N, N))
         #############################
         return out
 
-ims = tf.placeholder(tf.float32, shape=(
-    None, FLAGS.num_samples + 1, FLAGS.num_classes, 784))
-labels = tf.placeholder(tf.float32, shape=(
-    None, FLAGS.num_samples + 1, FLAGS.num_classes, FLAGS.num_classes))
+ims = tf.placeholder(tf.float32, shape=(None, FLAGS.num_samples + 1, FLAGS.num_classes, 784))
+labels = tf.placeholder(tf.float32, shape=(None, FLAGS.num_samples + 1, FLAGS.num_classes, FLAGS.num_classes))
 
 data_generator = DataGenerator(
     FLAGS.num_classes, FLAGS.num_samples + 1)
@@ -82,14 +97,15 @@ with tf.Session() as sess:
 
         if step % 100 == 0:
             print("*" * 5 + "Iter " + str(step) + "*" * 5)
-            i, l = data_generator.sample_batch('test', 100)
+            i, l = data_generator.sample_batch('test', 423)  # takes all the data
             feed = {ims: i.astype(np.float32),
                     labels: l.astype(np.float32)}
             pred, tls = sess.run([out, loss], feed)
             print("Train Loss:", ls, "Test Loss:", tls)
-            pred = pred.reshape(
-                -1, FLAGS.num_samples + 1,
-                FLAGS.num_classes, FLAGS.num_classes)
-            pred = pred[:, -1, :, :].argmax(2)
+            pred = tf.reshape(pred,
+                              (-1, FLAGS.num_samples + 1,
+                               FLAGS.num_classes, FLAGS.num_classes)
+                              )
+            pred = pred[:, -1, :, :].eval().argmax(2)
             l = l[:, -1, :, :].argmax(2)
-            print("Test Accuracy", (1.0 * (pred == l)).mean())
+            print("Test Accuracy", (1.0 * (pred == l).mean()))
