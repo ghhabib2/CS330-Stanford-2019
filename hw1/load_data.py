@@ -1,8 +1,10 @@
 import numpy as np
 import os
 import random
-import tensorflow as tf
-from scipy import misc
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+from imageio import imread
 
 
 def get_images(paths, labels, nb_samples=None, shuffle=True):
@@ -37,7 +39,7 @@ def image_file_to_array(filename, dim_input):
     Returns:
         1 channel image
     """
-    image = misc.imread(filename)
+    image = imread(filename)
     image = image.reshape([dim_input])
     image = image.astype(np.float32) / 255.0
     image = 1.0 - image
@@ -101,7 +103,25 @@ class DataGenerator(object):
 
         #############################
         #### YOUR CODE GOES HERE ####
-        pass
-        #############################
 
-        return all_image_batches, all_label_batches
+        all_image_batchs = np.zeros((batch_size, self.num_samples_per_class, self.num_classes, self.dim_input))  # shape: B, K, N, 784
+        all_label_batchs = np.zeros((batch_size, self.num_samples_per_class, self.num_classes, self.num_classes))  # shape: B, K, N, N
+        
+        for i in range(batch_size):
+            # 1. Sample N different classes from either the specified train, test, or validation folders.
+            sampled_classes = random.sample(folders, self.num_classes)
+            sampled_labels = [os.path.basename(os.path.split(family)[0]) for family in sampled_classes]
+            if batch_type == "test":
+                images_labels = get_images(sampled_classes, sampled_labels, nb_samples=self.num_samples_per_class, shuffle=False)
+            else:
+                images_labels = get_images(sampled_classes, sampled_labels, nb_samples=self.num_samples_per_class, shuffle=True)
+
+            for idx, label_imgpath in enumerate(images_labels):
+                label, image_path = label_imgpath
+                k = idx % self.num_samples_per_class
+                n = idx // self.num_samples_per_class
+                image = image_file_to_array(image_path, self.dim_input)
+                all_image_batchs[i,k,n,:] = image
+                all_label_batchs[i,k,n,n] = 1
+        #############################
+        return all_image_batchs, all_label_batchs
