@@ -3,6 +3,7 @@ import random
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+import matplotlib.pyplot as plt
 from load_data import DataGenerator
 from tensorflow.python.platform import flags
 from tensorflow.keras import layers
@@ -86,22 +87,31 @@ loss = loss_function(out, labels)
 optim = tf.train.AdamOptimizer(0.001)
 optimizer_step = optim.minimize(loss)
 
+max_step = 5000
+log_iter = 100
+idx_list = range(0, max_step, log_iter)
+train_loss_list = []
+test_loss_list = []
+test_accuracy_list = []
 with tf.Session() as sess:
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
 
-    for step in range(50000):
+    for step in range(max_step):
         i, l = data_generator.sample_batch('train', FLAGS.meta_batch_size)
         feed = {ims: i.astype(np.float32), labels: l.astype(np.float32)}
         _, ls = sess.run([optimizer_step, loss], feed)
 
-        if step % 100 == 0:
+        if step % log_iter == 0:
             print("*" * 5 + "Iter " + str(step) + "*" * 5)
             i, l = data_generator.sample_batch('test', 423)  # takes all the data
             feed = {ims: i.astype(np.float32),
                     labels: l.astype(np.float32)}
             pred, tls = sess.run([out, loss], feed)
             print("Train Loss:", ls, "Test Loss:", tls)
+            train_loss_list.append(ls)
+            test_loss_list.append(tls)
+
             pred = tf.reshape(pred,
                               (-1, FLAGS.num_samples + 1,
                                FLAGS.num_classes, FLAGS.num_classes)
@@ -109,3 +119,21 @@ with tf.Session() as sess:
             pred = pred[:, -1, :, :].eval().argmax(2)
             l = l[:, -1, :, :].argmax(2)
             print("Test Accuracy", (1.0 * (pred == l).mean()))
+            test_accuracy_list.append((1.0 * (pred == l).mean()))
+
+plt.plot(idx_list, train_loss_list, label='train_loss')
+plt.plot(idx_list, test_loss_list, label='test_loss')
+plt.xlabel('step')
+plt.ylabel('cross_entropy')
+plt.legend()
+plt.title('loss')
+plt.savefig('./problem3/{}shot_{}way_loss.png'.format(FLAGS.num_samples, FLAGS.num_classes))
+plt.close()
+
+plt.plot(idx_list, test_accuracy_list, label='test_accuracy')
+plt.xlabel('step')
+plt.ylabel('accuracy')
+plt.legend()
+plt.title('Test accuracy')
+plt.savefig('./problem3/{}shot_{}way_accuracy.png'.format(FLAGS.num_samples, FLAGS.num_classes))
+plt.close()
