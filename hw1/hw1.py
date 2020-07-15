@@ -87,7 +87,7 @@ loss = loss_function(out, labels)
 optim = tf.train.AdamOptimizer(0.001)
 optimizer_step = optim.minimize(loss)
 
-max_step = 5000
+max_step = 100000
 log_iter = 100
 idx_list = range(0, max_step, log_iter)
 train_loss_list = []
