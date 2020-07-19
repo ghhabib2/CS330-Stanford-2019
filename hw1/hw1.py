@@ -16,10 +16,10 @@ flags.DEFINE_integer(
 
 flags.DEFINE_integer('num_samples', 1,
                      'number of examples used for inner gradient update (K for K-shot learning).')
-
 flags.DEFINE_integer('meta_batch_size', 16,
                      'Number of N-way classification tasks per batch')
-
+flags.DEFINE_integer('num_hidden_units', 128,
+                     'number of hidden units in MANN')
 
 def loss_function(preds, labels):
     """
@@ -46,7 +46,7 @@ class MANN(tf.keras.Model):
         super(MANN, self).__init__()
         self.num_classes = num_classes
         self.samples_per_class = samples_per_class
-        self.layer1 = tf.keras.layers.LSTM(128, return_sequences=True)
+        self.layer1 = tf.keras.layers.LSTM(FLAGS.num_hidden_units, return_sequences=True)
         self.layer2 = tf.keras.layers.LSTM(num_classes, return_sequences=True)
 
     def call(self, input_images, input_labels):
@@ -127,7 +127,8 @@ plt.xlabel('step')
 plt.ylabel('cross_entropy')
 plt.legend()
 plt.title('loss')
-plt.savefig('./problem3/{}shot_{}way_loss.png'.format(FLAGS.num_samples, FLAGS.num_classes))
+plt.savefig('./problem4/{}shot_{}way_{}units_loss.png'.format(FLAGS.num_samples, FLAGS.num_classes,
+                                                              FLAGS.num_hidden_units))
 plt.close()
 
 plt.plot(idx_list, test_accuracy_list, label='test_accuracy')
@@ -135,5 +136,6 @@ plt.xlabel('step')
 plt.ylabel('accuracy')
 plt.legend()
 plt.title('Test accuracy')
-plt.savefig('./problem3/{}shot_{}way_accuracy.png'.format(FLAGS.num_samples, FLAGS.num_classes))
+plt.savefig('./problem4/{}shot_{}way_{}units_accuracy.png'.format(FLAGS.num_samples, FLAGS.num_classes,
+                                                                  FLAGS.num_hidden_units))
 plt.close()
